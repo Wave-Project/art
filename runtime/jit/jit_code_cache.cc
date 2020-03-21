@@ -488,7 +488,6 @@ void JitCodeCache::FreeAllMethodHeaders(
   // first since once we do FreeCode() below, the memory can be reused
   // so it's possible for the same method_header to start representing
   // different compile code.
-  MutexLock mu(Thread::Current(), *Locks::jit_lock_);
   {
     MutexLock mu2(Thread::Current(), *Locks::cha_lock_);
     Runtime::Current()->GetClassLinker()->GetClassHierarchyAnalysis()
@@ -576,8 +575,8 @@ void JitCodeCache::RemoveMethodsIn(Thread* self, const LinearAlloc& alloc) {
         ++it;
       }
     }
+    FreeAllMethodHeaders(method_headers);
   }
-  FreeAllMethodHeaders(method_headers);
 }
 
 bool JitCodeCache::IsWeakAccessEnabled(Thread* self) const {
@@ -1252,8 +1251,8 @@ void JitCodeCache::RemoveUnmarkedCode(Thread* self) {
         it = method_code_map_.erase(it);
       }
     }
+    FreeAllMethodHeaders(method_headers);
   }
-  FreeAllMethodHeaders(method_headers);
 }
 
 bool JitCodeCache::GetGarbageCollectCode() {
