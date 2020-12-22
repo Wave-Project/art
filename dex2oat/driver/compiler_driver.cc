@@ -23,7 +23,6 @@
 #endif
 
 #include <string_view>
-#include <unordered_set>
 #include <vector>
 
 #include "android-base/logging.h"
@@ -36,6 +35,7 @@
 #include "base/array_ref.h"
 #include "base/bit_vector.h"
 #include "base/enums.h"
+#include "base/hash_set.h"
 #include "base/logging.h"  // For VLOG
 #include "base/stl_util.h"
 #include "base/string_view_cpp20.h"
@@ -1331,7 +1331,7 @@ class ClinitImageUpdate {
 
   mutable VariableSizedHandleScope hs_;
   mutable std::vector<Handle<mirror::Class>> to_insert_;
-  mutable std::unordered_set<mirror::Object*> marked_objects_;
+  mutable HashSet<mirror::Object*> marked_objects_;
   HashSet<std::string>* const image_class_descriptors_;
   std::vector<Handle<mirror::Class>> image_classes_;
   Thread* const self_;
@@ -2608,10 +2608,11 @@ class InitializeArrayClassesAndCreateConflictTablesVisitor : public ClassVisitor
  private:
   void FillIMTAndConflictTables(ObjPtr<mirror::Class> klass)
       REQUIRES_SHARED(Locks::mutator_lock_) {
+    ScopedAssertNoThreadSuspension ants(__FUNCTION__);
     if (!klass->ShouldHaveImt()) {
       return;
     }
-    if (visited_classes_.find(klass) != visited_classes_.end()) {
+    if (visited_classes_.find(klass.Ptr()) != visited_classes_.end()) {
       return;
     }
     if (klass->HasSuperClass()) {
@@ -2620,12 +2621,12 @@ class InitializeArrayClassesAndCreateConflictTablesVisitor : public ClassVisitor
     if (!klass->IsTemp()) {
       Runtime::Current()->GetClassLinker()->FillIMTAndConflictTables(klass);
     }
-    visited_classes_.insert(klass);
+    visited_classes_.insert(klass.Ptr());
   }
 
   VariableSizedHandleScope& hs_;
   std::vector<Handle<mirror::Class>> to_visit_;
-  std::unordered_set<ObjPtr<mirror::Class>, HashObjPtr> visited_classes_;
+  HashSet<mirror::Class*> visited_classes_;
 };
 
 void CompilerDriver::InitializeClasses(jobject class_loader,
